@@ -30,9 +30,8 @@ export async function GET(
       .map((a) => ({
         company_name: a.company_name,
         report_year: a.report_year,
-        score: (a.results as { score: number; grade: string }).score,
-        grade: (a.results as { score: number; grade: string }).grade,
-      }));
+        score: (a.results as unknown as { score: number; grade: string }).score,
+        grade: (a.results as unknown as { score: number; grade: string }).grade,      }));
 
     const avgScore =
       analyses.length > 0
