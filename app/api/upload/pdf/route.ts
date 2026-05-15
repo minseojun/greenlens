@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     let text = '';
 
     try {
-      const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParse = (await import('pdf-parse' as any)).default ?? (await import('pdf-parse' as any));
       // 최대 50페이지만 파싱 (환경 섹션 위주)
       const data = await pdfParse(buffer, { max: 50 });
       text = data.text;
