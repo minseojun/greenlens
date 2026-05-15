@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     let text = '';
 
     try {
-      // dynamic import로 Vercel 호환성 확보
       const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-      const data = await pdfParse(buffer);
+      // 최대 50페이지만 파싱 (환경 섹션 위주)
+      const data = await pdfParse(buffer, { max: 50 });
       text = data.text;
     } catch (parseErr) {
       console.error('pdf-parse 오류:', parseErr);
@@ -56,9 +56,11 @@ export async function POST(request: NextRequest) {
       .replace(/[ \t]{2,}/g, ' ')
       .trim();
 
-    const truncated = cleaned.length > 80000;
+    // 최대 40,000자로 제한 (안전한 JSON 바디 크기)
+    const MAX_CHARS = 40000;
+    const truncated = cleaned.length > MAX_CHARS;
     const finalText = truncated
-      ? cleaned.slice(0, 48000) + '\n\n[... 중간 내용 생략 ...]\n\n' + cleaned.slice(-32000)
+      ? cleaned.slice(0, MAX_CHARS)
       : cleaned;
 
     return NextResponse.json({
