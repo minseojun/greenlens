@@ -82,6 +82,12 @@ export default function UploadForm() {
 
       // 분석 시작
       setUploadProgress('AI 분석 파이프라인 시작 중...');
+
+      // 80,000자 초과 시 잘라서 전송
+      const truncatedText = finalText.length > 80000
+        ? finalText.slice(0, 48000) + '\n\n[... 중간 내용 생략 ...]\n\n' + finalText.slice(-32000)
+        : finalText;
+
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,7 +95,7 @@ export default function UploadForm() {
           company_name: companyName.trim(),
           industry,
           report_year: reportYear,
-          report_text: finalText,
+          report_text: truncatedText,
           pdf_url: pdfUrl,
         }),
       });
