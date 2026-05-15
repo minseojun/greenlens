@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
-import { extractTextFromPDF, truncateForAPI } from '@/lib/pdf';
 
-// Vercel: 최대 60초, 10MB 바디
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
@@ -21,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
         { error: '파일 크기가 10MB를 초과합니다.' },
@@ -29,38 +26,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // PDF → 텍스트 추출
     const buffer = Buffer.from(await file.arrayBuffer());
-    const rawText = await extractTextFromPDF(buffer);
-    const text = truncateForAPI(rawText);
+    let text = '';
 
-    // Supabase Storage에 원본 업로드 (선택적)
-    let pdfUrl: string | null = null;
     try {
-      const supabase = createAdminClient();
-      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const { data: uploadData } = await supabase.storage
-        .from('reports')
-        .upload(fileName, buffer, {
-          contentType: 'application/pdf',
-          upsert: false,
-        });
-      if (uploadData?.path) {
-        const { data: urlData } = supabase.storage
-          .from('reports')
-          .getPublicUrl(uploadData.path);
-        pdfUrl = urlData.publicUrl;
-      }
-    } catch (storageErr) {
-      // Storage 업로드 실패해도 텍스트 추출은 성공으로 처리
-      console.warn('PDF Storage 업로드 실패:', storageErr);
+      // dynamic import로 Vercel 호환성 확보
+      const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+      const data = await pdfParse(buffer);
+      text = data.text;
+    } catch (parseErr) {
+      console.error('pdf-parse 오류:', parseErr);
+      return NextResponse.json(
+        { error: 'PDF 텍스트 추출에 실패했습니다. 텍스트 직접 입력 모드를 사용해주세요.' },
+        { status: 422 }
+      );
     }
 
+    if (!text || text.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'PDF에서 텍스트를 추출할 수 없습니다. 스캔 이미지 PDF이거나 텍스트 레이어가 없을 수 있습니다.' },
+        { status: 422 }
+      );
+    }
+
+    // 텍스트 정리
+    const cleaned = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+
+    const truncated = cleaned.length > 80000;
+    const finalText = truncated
+      ? cleaned.slice(0, 48000) + '\n\n[... 중간 내용 생략 ...]\n\n' + cleaned.slice(-32000)
+      : cleaned;
+
     return NextResponse.json({
-      text,
-      pdf_url: pdfUrl,
-      char_count: rawText.length,
-      truncated: rawText.length > 80000,
+      text: finalText,
+      pdf_url: null,
+      char_count: cleaned.length,
+      truncated,
     });
   } catch (err) {
     console.error('PDF 업로드 오류:', err);
