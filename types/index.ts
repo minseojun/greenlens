@@ -133,6 +133,7 @@ export interface Stage4Result {
   grade: Grade;
   verdict: string;
   recommendations: string[];
+  radar_data: RadarData;
 }
 
 export interface RadarData {
