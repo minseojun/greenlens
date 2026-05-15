@@ -3,9 +3,14 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { runAnalysisPipeline } from '@/lib/claude/pipeline';
 import type { StartAnalysisRequest } from '@/types';
 
-// Vercel Fluid Compute: 최대 60초 허용
 export const maxDuration = 60;
 
+export const fetchCache = 'force-no-store';
+
+// Next.js Route Handler body size limit
+export const dynamic = 'force-dynamic';
+
+// 10MB body limit
 export async function POST(request: NextRequest) {
   try {
     const body: StartAnalysisRequest = await request.json();
