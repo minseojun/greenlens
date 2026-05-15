@@ -3,10 +3,10 @@ import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { industry: string } }
+  { params }: { params: Promise<{ industry: string }> }
 ) {
   try {
-    const industry = decodeURIComponent(params.industry);
+    const industry = decodeURIComponent((await params).industry);
     const supabase = createAdminClient();
 
     const { data, error } = await supabase
