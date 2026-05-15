@@ -14,9 +14,9 @@ const STATUS_PROGRESS: Record<string, number> = {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
 
   if (!id) {
     return NextResponse.json({ error: '분석 ID가 필요합니다.' }, { status: 400 });
